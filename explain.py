@@ -242,7 +242,69 @@ class Forest:
 				else:
 					j = j + 1
 
-		return Forest(forest_conjunction)		
+		return Forest(forest_conjunction)	
+
+	def optimize(self, feature_terms):
+		checked = [0]*len(self.list_of_trees)
+
+		calls = 0
+		while(sum(checked) != len(checked)):
+			#print("Reduce Call " + str(calls))
+			calls = calls + 1
+			checked = self.combine_trees(checked, feature_terms)
+		return
+
+
+
+	def combine_trees(self, checked, feature_terms):
+		reduced_list_of_trees = []
+		reduced_checked = []
+
+		i = 0
+		while(i < len(self.list_of_trees)):
+			if(checked[i] == 1):
+				reduced_list_of_trees.append(self.list_of_trees[i])
+				reduced_checked.append(1)
+				i = i + 1
+			else:
+				tree = self.list_of_trees[i].list_of_terms
+				last_term = [self.list_of_trees[i].list_of_terms[-1]]
+
+				j = i
+				while((self.list_of_trees[j].list_of_terms[:-1] == tree[:-1]) and (self.list_of_trees[j].list_of_terms[-1].split("_")[0] == tree[-1].split("_")[0])):
+					if(i != j):
+						last_term.append(self.list_of_trees[j].list_of_terms[-1])
+					j = j - 1
+					if(j < 0):
+						break
+				j = j + 1
+
+				k = i
+				while((self.list_of_trees[k].list_of_terms[:-1] == tree[:-1]) and (self.list_of_trees[k].list_of_terms[-1].split("_")[0] == tree[-1].split("_")[0])):
+					if(i != k):
+						last_term.append(self.list_of_trees[k].list_of_terms[-1])
+					k = k + 1
+					if(k == len(self.list_of_trees)):
+						break
+				
+				count = 0
+				while(count < i - j):
+					reduced_list_of_trees.pop()
+					reduced_checked.pop()				
+					count = count + 1
+				
+				
+				if(set(last_term) == set(feature_terms[-len(tree)])):
+					reduced_list_of_trees.append(Tree(tree[:-1]))
+					reduced_checked.append(0)
+				else:
+					reduced_list_of_trees.extend(self.list_of_trees[j : k])
+					reduced_checked.extend([1]*(k - j))
+				i = k
+		
+		self.list_of_trees = reduced_list_of_trees
+		return reduced_checked
+
 
 class Neuron:
 	def __init__(self, weights, bias, feature_terms, order):
@@ -395,68 +457,13 @@ for i in range(len(firing_final)):
 	
 	print('--------------------')
 
+
 forest_final = [tree for forest in forest_final for tree in forest]
 forest_final = Forest(forest_final)
-forest_final = [tree.list_of_terms for tree in forest_final.list_of_trees]
+print(forest_final.num_trees())
+forest_final.optimize(neuron.feature_terms)
+print(forest_final.num_trees())
 
-
-print(len(forest_final))
-checked = [0]*len(forest_final)
-
-def reduce(forest_final, checked):
-	forest_final_2 = []
-	checked_2 = []
-
-	i = 0
-	j = 0
-	while(i < len(forest_final)):
-		if(checked[i] == 1):
-			forest_final_2.append(forest_final[i])
-			checked_2.append(1)
-			i = i + 1
-		else:
-			k = i
-			while((forest_final[i][:-1] == forest_final[k][:-1]) and (forest_final[i][-1].split("_")[0] == forest_final[k][-1].split("_")[0])):
-				k = k - 1
-				if(k < 0):
-					break
-			k = k + 1
-
-			count = 0
-			while(count < i - k):
-				forest_final_2.pop()
-				checked_2.pop()				
-				count = count + 1
-
-			j = i
-			while((forest_final[i][:-1] == forest_final[j][:-1]) and (forest_final[i][-1].split("_")[0] == forest_final[j][-1].split("_")[0])):
-				j = j + 1
-				if(j == len(forest_final)):
-					break
-			
-			tree_i = forest_final[i]
-			last_terms = neuron.feature_terms[-len(tree_i)]
-			
-			if(j - k == len(last_terms)):
-				forest_final_2.append(tree_i[:-1])
-				checked_2.append(0)
-			else:
-				forest_final_2.extend(forest_final[k : j])
-				checked_2.extend([1]*(len(forest_final[k : j])))
-			i = j
-	return forest_final_2, checked_2
-
-calls = 0
-while(sum(checked) != len(checked)):
-	print("Reduce Call " + str(calls))
-	calls = calls + 1
-	forest_final, checked = reduce(forest_final, checked)
-
-print(len(forest_final))
-
-forest_final = [Tree(tree) for tree in forest_final]
-
-forest_final = Forest(forest_final)
 
 with open('tree_final.txt', 'w') as f:
 	print("Writing")
@@ -465,4 +472,3 @@ with open('tree_final.txt', 'w') as f:
 		f.write(str(tree_str) + '\n')
 	print("Done")
 
-	
