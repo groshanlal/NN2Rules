@@ -1,442 +1,468 @@
 import tensorflow as tf
-import numpy as np
-from sklearn.datasets import load_iris
 import pandas as pd
+import numpy as np
 import time
 
-def get_weights():
-	model = tf.keras.models.load_model('income_model')
+class ModelWeights:
+	def __init__(self):
+		self.__load_weights()
+		self.__load_features()
+		return
 
-	weight_layer_1 = model.layers[0].get_weights()[0]
-	bias_layer_1   = model.layers[0].get_weights()[1]
-	weight_layer_2 = model.layers[1].get_weights()[0]
-	bias_layer_2   = model.layers[1].get_weights()[1]
+	def __load_weights(self):
+		model = tf.keras.models.load_model('income_model')
+		self.weight_layer_1 = model.layers[0].get_weights()[0]
+		self.bias_layer_1   = model.layers[0].get_weights()[1]
+		self.weight_layer_2 = model.layers[1].get_weights()[0]
+		self.bias_layer_2   = model.layers[1].get_weights()[1]
+		return
 
-	return [weight_layer_1, bias_layer_1, weight_layer_2, bias_layer_2]
+	def __load_features(self):
+		column_names = pd.read_csv("data/train.csv").columns[:-1]
+		column_names_root = [x.split('_')[0] for x in column_names]
 
-def get_features():
-	feature_columns = pd.read_csv("data/train.csv").columns[:-1]
-	feature_root_names = [x.split('_')[0] for x in feature_columns]
+		self.feature_names = []
+		self.feature_terms = []
 
-	feature_names = []
-	feature_terms = []
-	feature_num_terms = []
-
-	for i in range(len(feature_root_names)):
-		name = feature_root_names[i]
-		term = feature_columns[i]
-		if(name not in feature_names):
-			feature_names.append(name)
-			feature_terms.append([term])
-			feature_num_terms.append(1)
-		if(term not in feature_terms[-1]):
-			feature_terms[-1].append(term)
-			feature_num_terms[-1] = feature_num_terms[-1] + 1 
-
-	return [feature_names, feature_terms, feature_num_terms] 
-
-def transform_weights(feature_weights, feature_terms, feature_num_terms, neuron_bias, feature_order = None):
-	feature_weights_ordered = []
-	feature_terms_ordered = []
-	cum_sum = 0
-	for i in range(len(feature_num_terms)):
-		num_terms = feature_num_terms[i]
-		weights = feature_weights[cum_sum : cum_sum + num_terms]
-		terms = np.array(feature_terms[i])
-		order = np.argsort(weights)
-
-		weights = list(weights[order])
-		terms = list(terms[order])
-		feature_weights_ordered.append(weights)
-		feature_terms_ordered.append(terms)
-
-		cum_sum = cum_sum + num_terms
+		for i in range(len(column_names_root)):
+			name = column_names_root[i]
+			term = column_names[i]
+			if(name not in self.feature_names):
+				self.feature_names.append(name)
+				self.feature_terms.append([])
+			self.feature_terms[-1].append(term)
+		return
 	
-	feature_weights_min = [min(fw) for fw in feature_weights_ordered]
-	for i in range(len(feature_weights_ordered)):
-		for j in range(len(feature_weights_ordered[i])):
-			feature_weights_ordered[i][j] = feature_weights_ordered[i][j] - feature_weights_min[i]
-		neuron_bias = neuron_bias + feature_weights_min[i]
-	
-	if(feature_order is not None):
-		feature_weights_ordered = [feature_weights_ordered[i] for i in feature_order]
-		feature_terms_ordered = [feature_terms_ordered[i] for i in feature_order]
-	
-	return [feature_weights_ordered, feature_terms_ordered, neuron_bias]
-
-def tree2str(tree):	
-	sep = " and "
-	tree_str = sep.join(tree)
-	return tree_str
-
-def forest2str(forest):	
-	forest_str = [tree2str(tree) for tree in forest]
-	forest_str_sorted = forest_str[:]
-	forest_str_sorted.sort()
-	return forest_str_sorted
-
-def get_forest(feature_weights_ordered, feature_terms_ordered, neuron_bias):	
-	if(len(feature_weights_ordered) == 0):
-		if(neuron_bias < 0):
-			return [], [], []
-		else:
-			return [[]], [0], [0]
-	feature_weights_max = [fw[-1] for fw in feature_weights_ordered]
-	feature_weights_min = [fw[0] for fw in feature_weights_ordered]
-	
-	if(sum(feature_weights_max) + neuron_bias < 0):
-		return [], [], []
-	if(sum(feature_weights_min) + neuron_bias >= 0):
-		return [[]], [0], [0]
-
-	forest = []
-	tree_sum = []
-	depth = []
-
-	pivot_node = feature_terms_ordered[-1][-1]
-	pivot_weight = feature_weights_ordered[-1][-1]
-
-	forest_1 = [[pivot_node]]
-	tree_sum_1 = [pivot_weight]
-	depth_1 = [1] 
-
-
-	N = len(feature_weights_ordered[-1])
-	for index in range(N):
-		forest_2 = [x[:] for x in forest_1]
-		tree_sum_2 = tree_sum_1[:]
-		depth_2 = depth_1[:]
-
-		forest_1 = []
-		tree_sum_1 = []
-		depth_1 = []
-
-		for i in range(len(forest_2)):
-			if(index > 0):
-				forest_2[i][0] = feature_terms_ordered[-1][N - 1 - index]
-				tree_sum_2[i] = feature_weights_ordered[-1][N - 1 - index] - feature_weights_ordered[-1][N - index] + tree_sum_2[i] 
-
-		for i in range(len(forest_2)):
-			if(neuron_bias + tree_sum_2[i] >=0):
-				forest.append(forest_2[i][:])
-				tree_sum.append(tree_sum_2[i])
-				depth.append(depth_2[i])
-
-				forest_1.append(forest_2[i][:])
-				tree_sum_1.append(tree_sum_2[i])
-				depth_1.append(depth_2[i])
-			else:
-				forest_2i, tree_sum_2i, depth_2i = get_forest(feature_weights_ordered[:-depth_2[i]], feature_terms_ordered[:-depth_2[i]], neuron_bias + tree_sum_2[i])
-				for j in range(len(forest_2i)):
-					forest_2i[j] = forest_2[i] + forest_2i[j] 
-					tree_sum_2i[j] = tree_sum_2[i] + tree_sum_2i[j] 
-					depth_2i[j] = depth_2[i] + depth_2i[j] 
-					
-
-					forest.append(forest_2i[j][:])
-					tree_sum.append(tree_sum_2i[j])
-					depth.append(depth_2i[j])
-
-					forest_1.append(forest_2i[j][:])
-					tree_sum_1.append(tree_sum_2i[j])
-					depth_1.append(depth_2i[j])
-
-
-	return  forest, tree_sum, depth
-
-def deserialize_forest(forest_str):
-	forest = []
-	for tree_str in forest_str:
-		tree = deserialize_tree(tree_str)
-		forest.append(tree)
-	return forest
-
-def deserialize_tree(tree_str):
-	tree = tree_str.split(" and ")
-	return tree
-
-
-def logical_and(forest_0, forest_1):
-	forest = []
-
-	forest_len_0 = len(forest_0)
-	forest_len_1 = len(forest_1)
-
-	forest_str_0 = forest2str(forest_0)
-	forest_str_1 = forest2str(forest_1)
-
-	i = 0
-	j = 0
-	while((i < forest_len_0) and (j < forest_len_1)):
-		tree_str_0 = forest_str_0[i]
-		tree_str_1 = forest_str_1[j]
-
-		tree_0 = deserialize_tree(tree_str_0)
-		tree_1 = deserialize_tree(tree_str_1)
-
-		N0 = len(tree_0)
-		N1 = len(tree_1)
-
-		k = 0
-		while((k < N0) and (k < N1) and (tree_0[k] == tree_1[k])):
-			k = k + 1
-		if(k == N0):
-			forest.append(tree_1)
-			j = j + 1
-		elif(k == N1):
-			forest.append(tree_0)
-			i = i + 1
-		elif(tree_0[k] < tree_1[k]):
-			i = i + 1
-		else:
-			j = j + 1
-
-	return forest
-
-def reduce_forest(forest_final):
-	forest_final_2 = []
-	i = 0
-	j = 0
-	while(i < len(forest_final)):
-		tree_final = forest_final[j][:-1]
-		fn = forest_final[j][-1].split("_")[0]
-		while((j < len(forest_final)) and (tree2str(tree_final) == tree2str(forest_final[j][:-1]))):
-			j = j + 1
-		if(j - i == feature_num_terms[feature_names.index(fn)]):
-			forest_final_2.append(tree_final)
-		else:
-			forest_final_2 = forest_final_2 + forest_final[i : j]
-		i = j
-	return forest_final_2
-
-def recursive_reduce_forest(forest_final):
-	forest_final = deserialize_forest(list(set(forest2str(forest_final))))
-	forest_final = deserialize_forest((forest2str(forest_final)))
-	forest_final_len = len(forest_final)
-	forest_final = reduce_forest(forest_final)
-	while(forest_final_len != len(forest_final)):
-		forest_final_len = len(forest_final)
-		forest_final = reduce_forest(forest_final)
-	return forest_final
-
-def binary_seq(n):
-	assert(n > 0)
-
-	if(n == 1):
-		return [[0], [1]]
-	if(n > 1):
-		smaller_seq = binary_seq(n - 1)
-		seq_0 = [[0] + s for s in smaller_seq[:]]
-		seq_1 = [[1] + s for s in smaller_seq[:]]
-
-		return seq_0 + seq_1
-
-def get_conditions(n, forest_pos, forest_neg):
-	assert(n > 0)
-
-	if(n == 1):
-		return [[0], [1]], [forest_neg[-1], forest_pos[-1]]
-	if(n > 1):		
-		smaller_seq, smaller_cond = get_conditions(n - 1, forest_pos, forest_neg)
-
-		seq_0 = [[0] + s for s in smaller_seq[:]]
-		seq_1 = [[1] + s for s in smaller_seq[:]]
-
-		smaller_cond_0 = [logical_and(forest_neg[-n], c) for c in smaller_cond[:]]
-		smaller_cond_1 = [logical_and(forest_pos[-n], c) for c in smaller_cond[:]]
+class InputNeuron:
+	def __init__(self, weights, bias, feature_terms):
+		self.feature_terms = [ft[:] for ft in feature_terms]
 		
-		return seq_0 + seq_1, smaller_cond_0 + smaller_cond_1
+		self.weights = []
+		self.bias = bias
 
-[weight_layer_1, bias_layer_1, weight_layer_2, bias_layer_2] = get_weights()
-num_hidden_neurons = len(bias_layer_1)
-[feature_names, feature_terms, feature_num_terms] = get_features()
+		cum_sum = 0
+		for ft in feature_terms:
+			num_terms = len(ft)
+			fw = list(weights[cum_sum : cum_sum + num_terms])
+			self.weights.append(fw)
+			cum_sum = cum_sum + num_terms
+
+		self.__shift_term_weights()
+		self.__sort_term_weights()
+
+	def __shift_term_weights(self):
+		for i in range(len(self.feature_terms)):
+			fw = self.weights[i]
+			fw_min = min(fw)
+			fw = [fw_terms - fw_min for fw_terms in fw]
+			self.weights[i] = fw
+			self.bias = self.bias + fw_min
+
+	def __sort_term_weights(self):
+		for i in range(len(self.feature_terms)):
+			fw = np.array(self.weights[i])
+			terms = np.array(self.feature_terms[i])
+
+			order = np.argsort(fw)
+
+			self.weights[i] = list(fw[order])
+			self.feature_terms[i] = list(terms[order])
+
+	def order_features(self, order):
+		self.weights = [self.weights[i] for i in order]
+		self.feature_terms = [self.feature_terms[i] for i in order]
+
+	def get_forest(self):
+		forest_builder = ForestBuilder(self.weights, 
+			self.bias, self.feature_terms)
+		return forest_builder.get_forest()
+		
+
+class ForestBuilder:
+	def __init__(self, weights, bias, feature_terms):
+		self.weights = [w[:] for w in weights]
+		self.bias = bias
+		self.feature_terms = [ft[:] for ft in feature_terms]
+		return 
+
+	def is_always_active(self):
+		weights_min = [w[ 0] for w in self.weights]
+		if(sum(weights_min) + self.bias >= 0):
+			return True
+		return False
+
+	def is_always_inactive(self):
+		weights_max = [w[-1] for w in self.weights]		
+		if(sum(weights_max) + self.bias < 0):
+			return True
+		return False
+
+	def get_forest(self):
+		list_of_tree_builders = self.build_forest()
+		list_of_trees = [Tree(tb.terms) for tb in list_of_tree_builders]
+		return Forest(list_of_trees)
+
+	def build_forest(self):
+		if(self.is_always_inactive()):
+			return []
+		if(self.is_always_active()):
+			return [TreeBuilder([], 0, 0)]
+		
+		root_choices = self.feature_terms[-1]
+		root_weights = self.weights[-1]
+		
+		guiding_forest = [ TreeBuilder([root_choices[-1]], root_weights[-1], root_weights[-1]) ]
+		forest = []
+		
+		N = len(root_choices)
+		for i in range(N):
+			root_term = root_choices[N - 1 - i]
+			root_value = root_weights[N - 1 - i]
+
+			forest_at_root = []
+			for j in range(len(guiding_forest)):
+				tree_builder = guiding_forest[j].copy()
+				tree_builder.update_root(root_term, root_value)
+				
+				tree_growth = self.grow(tree_builder)	
+				forest_at_root.extend(tree_growth)
+			
+			forest.extend(forest_at_root)		
+			guiding_forest = forest_at_root		
+		
+		return forest
+	
+	def grow(self, tree_builder):
+		num_terms = len(tree_builder.terms)
+		sub_neuron_forest_builder = ForestBuilder(self.weights[:-num_terms], self.bias + tree_builder.value, self.feature_terms[:-num_terms])
+		tree_growth = sub_neuron_forest_builder.build_forest()
+
+		for k in range(len(tree_growth)):
+			tree_growth[k].terms = tree_builder.terms + tree_growth[k].terms 
+			tree_growth[k].value = tree_builder.value + tree_growth[k].value 
+			tree_growth[k].root_value = tree_builder.root_value
+
+		return tree_growth
+		
+
+
+class TreeBuilder:
+	def __init__(self, terms, value, root_value):
+		self.terms = terms
+		self.value = value
+		self.root_value = root_value
+
+	def update_root(self, new_root_term, new_root_value):
+		self.terms[0] = new_root_term
+		self.value = self.value - self.root_value + new_root_value 
+		self.root_value = new_root_value
+
+	def copy(self):
+		terms = self.terms[:]
+		return TreeBuilder(terms, self.value, self.root_value)
+
+
+class Tree:
+	def __init__(self, list_of_terms):
+		self.list_of_terms = list_of_terms
+		return
+
+	def to_string(self):
+		sep = " and "
+		tree_str = sep.join(self.list_of_terms)
+		return tree_str
+
+	def num_terms(self):
+		return len(self.list_of_terms)
+
+	def logical_and(self, tree):
+		i = 0
+		while(self.list_of_terms[i] == tree.list_of_terms[i]):
+			i = i + 1
+			if(i == self.num_terms()):
+				return tree, i
+			if(i == tree.num_terms()):
+				return self, i
+		return None, i
+
+	def make_builder(self, weights, bias, feature_terms):
+		value = 0
+		root_value = 0
+		for i in range(len(self.list_of_terms)):
+			j = 0
+			while(self.list_of_terms[i] != feature_terms[-1 - i][j]):
+				j = j + 1
+			value = value + weights[-1 - i][j]
+			if(i == 0):
+				root_value = root_value + weights[-1 - i][j]
+		return TreeBuilder(self.list_of_terms[:], value, root_value)
+
+
+
+class Forest:
+	def __init__(self, list_of_trees):
+		self.list_of_trees = list_of_trees
+		
+		forest_str = self.to_string()
+		forest_str.sort()
+		
+		forest = []
+		for tree_str in forest_str:
+			tree = Tree(tree_str.split(" and "))
+			forest.append(tree)
+		self.list_of_trees = forest
+
+	def num_trees(self):
+		return len(self.list_of_trees)
+
+	def to_string(self):
+		forest_str = [tree.to_string() for tree in self.list_of_trees]
+		return forest_str
+
+	def logical_and(self, forest):
+		forest_conjunction = []
+
+		i = 0
+		j = 0
+		while((i < self.num_trees()) and (j < forest.num_trees())):
+			tree_0 = self.list_of_trees[i]
+			tree_1 = forest.list_of_trees[j]
+
+			tree_conjunction, k = tree_0.logical_and(tree_1)
+
+			if(tree_conjunction is not None):
+				forest_conjunction.append(tree_conjunction)
+				if(k == tree_0.num_terms()):
+					j = j + 1
+				if(k == tree_1.num_terms()):
+					i = i + 1
+			else:
+				if(tree_0.list_of_terms[k] < tree_1.list_of_terms[k]):
+					i = i + 1
+				else:
+					j = j + 1
+
+		return Forest(forest_conjunction)		
+
+class Neuron:
+	def __init__(self, weights, bias, feature_terms, order):
+		self.weights = weights		
+		self.bias = bias
+		self.feature_terms = [ft[:] for ft in feature_terms]
+
+		positive = InputNeuron(self.weights, self.bias, self.feature_terms)
+		positive.order_features(order)
+		self.forest_positive = positive.get_forest()
+
+		negative = InputNeuron(-1*self.weights, -1*self.bias, self.feature_terms)
+		negative.order_features(order)
+		self.forest_negative = negative.get_forest()
+		return
+
+
+income_model = ModelWeights()
+
+_ , num_hidden_neurons =  np.shape(income_model.weight_layer_1)
 
 neuron_orders = []
 for i in range(num_hidden_neurons):
-	neuron_weights = weight_layer_1[:, i]
-	neuron_bias = bias_layer_1[i]
-
-	[feature_weights_ordered, feature_terms_ordered, neuron_bias] = transform_weights(neuron_weights, feature_terms, feature_num_terms, neuron_bias)
+	neuron = InputNeuron(income_model.weight_layer_1[:, i], 
+		income_model.bias_layer_1[i], 
+		income_model.feature_terms)
 	ranges = []
-	for i in range(len(feature_weights_ordered)):
-		ranges.append(max(feature_weights_ordered[i]) - min(feature_weights_ordered[i]))
-		ranges[i] = ranges[i] / feature_num_terms[i]
+	for i in range(len(neuron.feature_terms)):
+		ranges.append(max(neuron.weights[i]) - min(neuron.weights[i]))
+		ranges[i] = ranges[i] / len(neuron.feature_terms[i])
 	neuron_orders.append(ranges)
+
 
 neuron_orders = np.array(neuron_orders)
 feature_order = np.mean(neuron_orders, axis = 0)
-
 feature_order = list(np.argsort(np.array(feature_order)))
 
 print("Features Names in Descending Order of Importance: ")
-print([feature_names[feature_order[-1-i]] for i in range(len(feature_order))]) 
-print([feature_num_terms[feature_order[-1-i]] for i in range(len(feature_order))]) 
+print([income_model.feature_names[feature_order[-1-i]] for i in range(len(feature_order))]) 
+print([len(income_model.feature_terms[feature_order[-1-i]]) for i in range(len(feature_order))]) 
 print()
 
-forest_pos = []
+neuron_layer = []
+
 t = time.time()
 for i in range(num_hidden_neurons):
-	print("Positive Neuron " + str(i))
+	print("Neuron " + str(i))
 	if(i > 0):
 		sec = time.time() - t
 		print("ETA: " + str(int(sec/60*(num_hidden_neurons - i))) + " min")
 		t = time.time()
 
-	neuron_weights = weight_layer_1[:, i]
-	neuron_bias = bias_layer_1[i]
-	
-	[feature_weights_ordered, feature_terms_ordered, neuron_bias] = transform_weights(neuron_weights, feature_terms, feature_num_terms, neuron_bias, feature_order)
-	
-	feature_weights_min = [fw[0] for fw in feature_weights_ordered]
-	feature_weights_max = [fw[-1] for fw in feature_weights_ordered]
-	if(sum(feature_weights_min) + neuron_bias > 0):
-		print("Neuron " + str(i) + " Useless: Always Positive")
-	if(sum(feature_weights_max) + neuron_bias < 0):
-		print("Neuron " + str(i) + " Useless: Always Negative")
+	neuron = Neuron(income_model.weight_layer_1[:, i], 
+		income_model.bias_layer_1[i], 
+		income_model.feature_terms,
+		feature_order)	
 
-	neuron_forest, _, _ = get_forest(feature_weights_ordered, feature_terms_ordered, neuron_bias)
-	print(len(neuron_forest))
-	forest_pos.append(neuron_forest)
+	print("Positive: " + str(neuron.forest_positive.num_trees()))
+	print("Negative: " + str(neuron.forest_negative.num_trees()))
+
+	neuron_layer.append(neuron)
+
+
 	print("--------------------")
 
 with open('tree_pos.txt', 'w') as f:
-	for i in range(len(forest_pos)):
+	print("Writing")
+	for i in range(len(neuron_layer)):
 		f.write("Neuron " + str(i) + ":" + '\n')
-		forest_str = forest2str(forest_pos[i])	
+		forest_str = neuron_layer[i].forest_positive.to_string()
 		for tree_str in forest_str:
 			f.write(str(tree_str) + '\n')
-		f.write("----------------" + '\n')
-
-forest_neg = []
-t = time.time()
-for i in range(num_hidden_neurons):
-	print("Negative Neuron " + str(i))
-	if(i > 0):
-		sec = time.time() - t
-		print("ETA: " + str(int(sec/60*(num_hidden_neurons - i))) + " min")
-		t = time.time()
-
-	neuron_weights = -1 * weight_layer_1[:, i]
-	neuron_bias = -1 * bias_layer_1[i]
-
-	[feature_weights_ordered, feature_terms_ordered, neuron_bias] = transform_weights(neuron_weights, feature_terms, feature_num_terms, neuron_bias, feature_order)
-
-	neuron_forest, _, _ = get_forest(feature_weights_ordered, feature_terms_ordered, neuron_bias)
-	print(len(neuron_forest))
-	forest_neg.append(neuron_forest)
-	print("--------------------")
-
+		f.write("----------------" + '\n')	
+	print("Done")
+	
 with open('tree_neg.txt', 'w') as f:
-	for i in range(len(forest_neg)):
+	print("Writing")
+	for i in range(len(neuron_layer)):
 		f.write("Neuron " + str(i) + ":" + '\n')
-		forest_str = forest2str(forest_neg[i])	
+		forest_str = neuron_layer[i].forest_negative.to_string()	
 		for tree_str in forest_str:
 			f.write(str(tree_str) + '\n')
 		f.write("----------------" + '\n')
+	print("Done")
+
+def get_partitions(neuron_layer, combo_weights, combo_bias):
+	num_neurons = len(neuron_layer)
+	if(num_neurons == 1):
+		neg_weights = [0*combo_weights[0]*neuron_layer[0].weights]
+		neg_bias = [0*combo_weights[0]*neuron_layer[0].bias + combo_bias]
+		neg_conditions = [neuron_layer[0].forest_negative]
+		neg_firing = [[0]]
+
+		pos_weights = [1*combo_weights[0]*neuron_layer[0].weights]
+		pos_bias = [1*combo_weights[0]*neuron_layer[0].bias + combo_bias]
+		pos_conditions = [neuron_layer[0].forest_positive]
+		pos_firing = [[1]]
+
+		return neg_weights + pos_weights, neg_bias + pos_bias, neg_conditions + pos_conditions, neg_firing + pos_firing
+	else:
+		weights, bias, conditions, firing = get_partitions(neuron_layer[1:], combo_weights[1:], combo_bias)
+		neg_weights = [0*combo_weights[0]*neuron_layer[0].weights + w for w in weights]
+		neg_bias = [0*combo_weights[0]*neuron_layer[0].bias + b for b in bias]
+		neg_conditions = [neuron_layer[0].forest_negative.logical_and(c) for c in conditions]
+		neg_firing = [[0] + f for f in firing]
+
+		pos_weights = [1*combo_weights[0]*neuron_layer[0].weights + w for w in weights]
+		pos_bias = [1*combo_weights[0]*neuron_layer[0].bias + b for b in bias]
+		pos_conditions = [neuron_layer[0].forest_positive.logical_and(c) for c in conditions]
+		pos_firing = [[1] + f for f in firing]
+
+		return neg_weights + pos_weights, neg_bias + pos_bias, neg_conditions + pos_conditions, neg_firing + pos_firing
 
 t = time.time()
-firings, conditions = get_conditions(num_hidden_neurons, forest_pos, forest_neg)
+print("Computing Conditions ... ")
+weights_final, bias_final, conditions_final, firing_final = get_partitions(neuron_layer, income_model.weight_layer_2, income_model.bias_layer_2)
 sec = time.time() - t
 print("Computed Conditions in " + str(int(sec/60)) + " min")
 
-weight_diagonal = np.diag(weight_layer_2[:,0])
-weight_firing = np.matmul(weight_diagonal, np.array(firings).T)
-weight_firing = weight_firing.T
-neuron_firing_weights = np.matmul(weight_firing, weight_layer_1.T)
-neuron_firing_bias = np.matmul(weight_firing, bias_layer_1.reshape(6, 1)) + bias_layer_2[0]
 
 forest_final = []
+count = 0
+
 t = time.time()
-for i in range(len(firings)):
-	print("Firing " + str(i))
+for i in range(len(firing_final)):
 	if(i > 0):
 		sec = time.time() - t
-		print("ETA: " + str(int(sec/60*(len(firings) - i))) + " min")
+		print("ETA: " + str(int(sec/60*(len(firing_final) - i))) + " min")
 		t = time.time()
 	
-	precondition = conditions[i]
-	neuron_weights = neuron_firing_weights[i]
-	neuron_bias = neuron_firing_bias[i]
+	print(firing_final[i])
+	print("Conditions " + str(len(conditions_final[i].list_of_trees)))	
 
+	neuron = InputNeuron(weights_final[i], bias_final[i], income_model.feature_terms)	
+	neuron.order_features(feature_order)
+	forest_builder = ForestBuilder(neuron.weights, neuron.bias, neuron.feature_terms)
 	
-	if(len(precondition) > 0):
-		print(len(precondition))
-		print(str(int(time.time() - t)) + " sec")
+	forest = []
+	for tree in conditions_final[i].list_of_trees:
+		tree_builder = tree.make_builder(neuron.weights, neuron.bias, neuron.feature_terms)
+		list_of_tree_builders = forest_builder.grow(tree_builder)
+		list_of_trees = [Tree(tb.terms) for tb in list_of_tree_builders]
+		forest.extend(list_of_trees)
+	
+	print("Trees: " + str(len(forest)))
 
-		[feature_weights_ordered, feature_terms_ordered, neuron_bias] = transform_weights(neuron_weights, feature_terms, feature_num_terms, neuron_bias, feature_order)
-		neuron_forest, _, _ = get_forest(feature_weights_ordered, feature_terms_ordered, neuron_bias)
-		
-		print(len(precondition))
-		print(str(int(time.time() - t)) + " sec")
-		
-		neuron_forest = logical_and(precondition, neuron_forest)
-		forest_str = forest2str(neuron_forest)	
-		forest_final = forest_final + neuron_forest
-		
-		print(len(neuron_forest))
-		print(str(int(time.time() - t)) + " sec")
+	forest_final.append(forest)	
+	count = count + len(forest)
+	print("Total : " + str(count))
 	
+	print('--------------------')
+
+forest_final = [tree for forest in forest_final for tree in forest]
+forest_final = Forest(forest_final)
+forest_final = [tree.list_of_terms for tree in forest_final.list_of_trees]
+
+
+print(len(forest_final))
+checked = [0]*len(forest_final)
+
+def reduce(forest_final, checked):
+	forest_final_2 = []
+	checked_2 = []
+
+	i = 0
+	j = 0
+	while(i < len(forest_final)):
+		if(checked[i] == 1):
+			forest_final_2.append(forest_final[i])
+			checked_2.append(1)
+			i = i + 1
+		else:
+			k = i
+			while((forest_final[i][:-1] == forest_final[k][:-1]) and (forest_final[i][-1].split("_")[0] == forest_final[k][-1].split("_")[0])):
+				k = k - 1
+				if(k < 0):
+					break
+			k = k + 1
+
+			count = 0
+			while(count < i - k):
+				forest_final_2.pop()
+				checked_2.pop()				
+				count = count + 1
+
+			j = i
+			while((forest_final[i][:-1] == forest_final[j][:-1]) and (forest_final[i][-1].split("_")[0] == forest_final[j][-1].split("_")[0])):
+				j = j + 1
+				if(j == len(forest_final)):
+					break
 			
-	print(len(forest_final))
+			tree_i = forest_final[i]
+			last_terms = neuron.feature_terms[-len(tree_i)]
+			
+			if(j - k == len(last_terms)):
+				forest_final_2.append(tree_i[:-1])
+				checked_2.append(0)
+			else:
+				forest_final_2.extend(forest_final[k : j])
+				checked_2.extend([1]*(len(forest_final[k : j])))
+			i = j
+	return forest_final_2, checked_2
 
-	print("--------------------")
+calls = 0
+while(sum(checked) != len(checked)):
+	print("Reduce Call " + str(calls))
+	calls = calls + 1
+	forest_final, checked = reduce(forest_final, checked)
 
-forest_final = deserialize_forest((forest2str(forest_final)))
-forest_final = recursive_reduce_forest(forest_final)
 print(len(forest_final))
 
+forest_final = [Tree(tree) for tree in forest_final]
+
+forest_final = Forest(forest_final)
+
 with open('tree_final.txt', 'w') as f:
-	forest_str = forest2str(forest_final)	
+	print("Writing")
+	forest_str = forest_final.to_string()	
 	for tree_str in forest_str:
 		f.write(str(tree_str) + '\n')
+	print("Done")
 
-data_test = pd.read_csv("data/test.csv").to_numpy() 
-
-x_test = data_test[:,:-1]
-y_test = data_test[:, -1]
-
-y_pred = np.matmul(x_test, weight_layer_1) + bias_layer_1
-y_pred[y_pred < 0.0] = 0.0
-
-y_pred = np.matmul(y_pred, weight_layer_2) + bias_layer_2
-y_pred[y_pred < 0.0] = 0.0
-y_pred[y_pred > 0.0] = 1.0
-np.savetxt('ypred.csv', y_pred, fmt='%.3f', delimiter=', ')
-
-[feature_names, feature_terms, feature_num_terms]  = get_features()
-feature_names = [feature_names[feature_order[i]] for i in range(len(feature_order))]
-feature_terms = [feature_terms[feature_order[i]] for i in range(len(feature_order))]
-
-
-data_forest = []
-data_forest_str = []
-for index in range(len(y_pred)):
-	x = x_test[index]
-	x_parsed = []
-	cum_sum = 0
-	for i in range(len(feature_num_terms)):
-		num_terms = feature_num_terms[i]
-		x_terms = list(x[cum_sum : cum_sum + num_terms])
-
-		x_parsed.append(x_terms)
-		cum_sum = cum_sum + num_terms
-
-
-	x_parsed = [x_parsed[feature_order[i]] for i in range(len(feature_order))]
-
-	x_tree = []
-	for i in range(len(x_parsed)):
-		x_tree = [feature_terms[i][x_parsed[i].index(1)]] + x_tree
-	data_forest.append(x_tree)
-	data_forest_str.append(tree2str(x_tree))
-
-
-
-result = logical_and(data_forest, forest_final)
-result_str = forest2str(result)
-for i in range(len(data_forest)):
-	if(y_pred[i] == 0) and (data_forest_str[i] in result_str):
-		print("Wrong")
-	if(y_pred[i] == 1) and (data_forest_str[i] not in result_str):
-		print("Wrong")
-
+	
