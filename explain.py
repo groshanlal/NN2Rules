@@ -197,6 +197,12 @@ class Tree:
 				root_value = root_value + weights[-1 - i][j]
 		return TreeBuilder(self.list_of_terms[:], value, root_value)
 
+	def diff(self, tree):
+		if(self.list_of_terms[:-1] == tree.list_of_terms[:-1]):
+			if(self.list_of_terms[-1].split("_")[0] == tree.list_of_terms[-1].split("_")[0]):
+				return 0
+		return 1
+
 
 
 class Forest:
@@ -244,12 +250,44 @@ class Forest:
 
 		return Forest(forest_conjunction)	
 
+	def search_similar(self, tree, starting_pos = 0):
+		tree_at_start = self.list_of_trees[starting_pos]
+		assert(tree_at_start.diff(tree) == 0)
+
+		terms = set()
+
+		start = starting_pos
+		tree_at_start = self.list_of_trees[start]
+		while(tree.diff(tree_at_start) == 0):
+			terms.add(tree_at_start.list_of_terms[-1])
+			start = start - 1
+			if(start < 0):
+				break
+			else:
+				tree_at_start = self.list_of_trees[start]
+		start = start + 1
+
+		end = starting_pos
+		tree_at_end = self.list_of_trees[end]
+		while(tree.diff(tree_at_end) == 0):
+			terms.add(tree_at_end.list_of_terms[-1])
+			end = end + 1
+			if(end == self.num_trees()):
+				break
+			else:
+				tree_at_end = self.list_of_trees[end]
+
+		return [start, end], terms
+
+
+
+
 	def optimize(self, feature_terms):
 		checked = [0]*len(self.list_of_trees)
 
 		calls = 0
 		while(sum(checked) != len(checked)):
-			#print("Reduce Call " + str(calls))
+			print("Reduce Call " + str(calls))
 			calls = calls + 1
 			checked = self.combine_trees(checked, feature_terms)
 		return
@@ -261,46 +299,28 @@ class Forest:
 		reduced_checked = []
 
 		i = 0
-		while(i < len(self.list_of_trees)):
+		while(i < self.num_trees()):
+			tree = self.list_of_trees[i]
 			if(checked[i] == 1):
-				reduced_list_of_trees.append(self.list_of_trees[i])
+				reduced_list_of_trees.append(tree)
 				reduced_checked.append(1)
 				i = i + 1
 			else:
-				tree = self.list_of_trees[i].list_of_terms
-				last_term = [self.list_of_trees[i].list_of_terms[-1]]
+				[start, end], terms = self.search_similar(tree, starting_pos = i)
 
-				j = i
-				while((self.list_of_trees[j].list_of_terms[:-1] == tree[:-1]) and (self.list_of_trees[j].list_of_terms[-1].split("_")[0] == tree[-1].split("_")[0])):
-					if(i != j):
-						last_term.append(self.list_of_trees[j].list_of_terms[-1])
-					j = j - 1
-					if(j < 0):
-						break
-				j = j + 1
-
-				k = i
-				while((self.list_of_trees[k].list_of_terms[:-1] == tree[:-1]) and (self.list_of_trees[k].list_of_terms[-1].split("_")[0] == tree[-1].split("_")[0])):
-					if(i != k):
-						last_term.append(self.list_of_trees[k].list_of_terms[-1])
-					k = k + 1
-					if(k == len(self.list_of_trees)):
-						break
-				
 				count = 0
-				while(count < i - j):
+				while(count < i - start):
 					reduced_list_of_trees.pop()
 					reduced_checked.pop()				
-					count = count + 1
+					count = count + 1			
 				
-				
-				if(set(last_term) == set(feature_terms[-len(tree)])):
-					reduced_list_of_trees.append(Tree(tree[:-1]))
+				if(set(terms) == set(feature_terms[-tree.num_terms()])):
+					reduced_list_of_trees.append(Tree(tree.list_of_terms[:-1]))
 					reduced_checked.append(0)
 				else:
-					reduced_list_of_trees.extend(self.list_of_trees[j : k])
-					reduced_checked.extend([1]*(k - j))
-				i = k
+					reduced_list_of_trees.extend(self.list_of_trees[start : end])
+					reduced_checked.extend([1]*(end - start))
+				i = end
 		
 		self.list_of_trees = reduced_list_of_trees
 		return reduced_checked
@@ -471,4 +491,6 @@ with open('tree_final.txt', 'w') as f:
 	for tree_str in forest_str:
 		f.write(str(tree_str) + '\n')
 	print("Done")
+
+
 
