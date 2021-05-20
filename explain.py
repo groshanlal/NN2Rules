@@ -492,41 +492,33 @@ with open('tree_final.txt', 'w') as f:
 		f.write(str(tree_str) + '\n')
 	print("Done")
 
-print("Verifying RuleList")
+print("Verifying RuleList ...")
 
-x_test = pd.read_csv("data/test.csv").to_numpy()[:,:-1] 
-column_names = list(pd.read_csv("data/test.csv").columns[:-1])
-
-y_pred = np.matmul(x_test, income_model.weight_layer_1) + income_model.bias_layer_1
-y_pred[y_pred < 0.0] = 0.0
-
-y_pred = np.matmul(y_pred, income_model.weight_layer_2) + income_model.bias_layer_2
-y_pred[y_pred < 0.0] = 0.0
-y_pred[y_pred > 0.0] = 1.0
-
+y_pred = pd.read_csv("data/pred.csv", header=None).to_numpy()
+y_pred[y_pred < 0.5] = 0.0
+y_pred[y_pred > 0.5] = 1.0
 y_pred = y_pred.reshape(-1)
 
+x_test = pd.read_csv("data/test_raw.csv")
+x_test = x_test.drop("income", 1)
 
-x_test_trees = []
+cols = list(x_test.columns)
+cols = [cols[i] for i in feature_order]
+cols.reverse()
+x_test = x_test[cols]
+
+for c in cols:
+	x_test[c] = x_test[c].apply(lambda x: c + "_" + x)
+
+x_test = x_test.to_numpy()
+x_test = [Tree(list(xt)) for xt in x_test]
+
+result = Forest(x_test).logical_and(forest_final)
+result = result.to_string() 
+result = set(result)
+
 for i in range(len(x_test)):
-	x = InputNeuron(x_test[i], 0, income_model.feature_terms)
-	x.order_features(feature_order)		
-
-	xt = []
-	for j in range(len(x.weights)):
-		for k in range(len(x.weights[j])):
-			if(x.weights[j][k] == 1):
-				xt.append(x.feature_terms[j][k])
-	xt.reverse()
-	x_test_trees.append(Tree(xt))
-
-x_test_result = Forest(x_test_trees).logical_and(forest_final)
-
-x_test_result = x_test_result.to_string() 
-x_test_result = set(x_test_result)
-
-for i in range(len(x_test_trees)):
-	if(x_test_trees[i].to_string() in x_test_result):
+	if(x_test[i].to_string() in result):
 		if(y_pred[i] == 0):
 			print("Wrong!")
 	else:
