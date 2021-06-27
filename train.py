@@ -18,9 +18,8 @@ x_test = data_test[:,:-1]
 y_test = data_test[:, -1]
 
 model = tf.keras.models.Sequential([
-  # tf.keras.layers.Flatten(),
   tf.keras.layers.Dense(6, activation=tf.nn.relu),
-  # tf.keras.layers.Dropout(0.2),
+  #tf.keras.layers.Dense(3, activation=tf.nn.relu),
   tf.keras.layers.Dense(1, activation=tf.nn.sigmoid)
 ])
 model.compile(optimizer='adam',
