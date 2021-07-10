@@ -19,7 +19,7 @@ y_test = data_test[:, -1]
 
 model = tf.keras.models.Sequential([
   tf.keras.layers.Dense(6, activation=tf.nn.relu),
-  #tf.keras.layers.Dense(3, activation=tf.nn.relu),
+  tf.keras.layers.Dense(3, activation=tf.nn.relu),
   tf.keras.layers.Dense(1, activation=tf.nn.sigmoid)
 ])
 model.compile(optimizer='adam',
