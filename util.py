@@ -374,3 +374,5 @@ class Forest:
 			return reduced_forest
 		else:
 			return self.simplify_forest_terms(feature_term_nums, forest = reduced_forest)
+
+

@@ -87,12 +87,14 @@ for layer_num in range(1, len(income_model.layer_weights)):
 	neuron_layer_weights = np.array(income_model.layer_weights[layer_num])
 	neuron_layer_bias = np.array(income_model.layer_bias[layer_num])
 
+	print("Computing Conditions: Step 1: Merging previous layer trees")
 	conditions = Forest(neuron_layer[0])
 	for i in range(1, len(neuron_layer)):
 		conditions.logical_and(Forest(neuron_layer[i]))
 
 	#firing = conditions.get_firing()
 
+	print("Computing Conditions: Step 2: Extending weights to next layer")
 	for i in range(len(conditions.list_of_trees)):
 		w = np.array(conditions.list_of_trees[i].list_of_weights)
 		b = np.array(conditions.list_of_trees[i].list_of_bias)
@@ -105,8 +107,10 @@ for layer_num in range(1, len(income_model.layer_weights)):
 		conditions.list_of_trees[i].list_of_weights = w.tolist()
 		conditions.list_of_trees[i].list_of_bias = b.tolist()
 
+	print("Computing Conditions: Step 3: Extending trees to next layer")
 	neuron_layer = []
 	for j in range(len(neuron_layer_bias)):
+		print("Neuron " + str(j))
 		neuron_layer.append([])
 		for i in range(len(conditions.list_of_trees)):
 			neuron = Neuron(conditions.list_of_trees[i].list_of_weights[j], 
@@ -128,12 +132,7 @@ for layer_num in range(1, len(income_model.layer_weights)):
 	print()
 
 
-print("Simplifying forest")
-assert(len(neuron_layer) == 1)
-feature_term_nums = [len(income_model.reshaped_feature_terms[feature_order[i]]) for i in range(len(feature_order))]
-conditions = Forest(neuron_layer[0])
-forest_final = conditions.simplify_forest_terms(feature_term_nums)
-print()
+forest_final = [tree.terms for tree in neuron_layer[0]]
 
 with open('tree_final.txt', 'w') as f:
 	print("Writing")
@@ -183,4 +182,18 @@ for i in range(len(x_test_terms)):
 			print(y_pred[i])
 			print(post_sigmoid)
 			print("Wrong!")
+
+print("Simplifying forest")
+assert(len(neuron_layer) == 1)
+feature_term_nums = [len(income_model.reshaped_feature_terms[feature_order[i]]) for i in range(len(feature_order))]
+conditions = Forest(neuron_layer[0])
+forest_final = conditions.simplify_forest_terms(feature_term_nums)
+print()
+
+with open('tree_final.txt', 'w') as f:
+	print("Writing")
+	for tree in forest_final:
+		tree_str = " and ".join(tree)
+		f.write(str(tree_str) + '\n')
+	print("Done")
 

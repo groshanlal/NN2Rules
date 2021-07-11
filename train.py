@@ -37,3 +37,42 @@ y_pred = model.predict(x_test)
 np.savetxt('data/pred.csv', y_pred, fmt='%.3f')
 
 model.save('income_model')
+
+
+y_pred[y_pred < 0.5] = 0.0
+y_pred[y_pred >= 0.5] = 1.0 
+y_pred = y_pred.reshape(-1)
+
+tp = 0 
+fp = 0
+tn = 0 
+fn = 0
+for i in range(len(y_pred)):
+  if((y_test[i] == 1) and (y_pred[i] == 1)):
+    tp = tp + 1
+  if((y_test[i] == 1) and (y_pred[i] == 0)):
+    fn = fn + 1
+  if((y_test[i] == 0) and (y_pred[i] == 1)):
+    fp = fp + 1
+  if((y_test[i] == 0) and (y_pred[i] == 0)):
+    tn = tn + 1
+
+acc = (tp + tn) / (tp + fp + tn + fn)
+precision = tp / (tp + fp)
+recall = tp / (tp + fn)
+f1 = 2*precision*recall/(precision + recall)
+
+print("Accuracy")
+print(acc)
+print()
+print("Precision")
+print(precision)
+print()
+print("Recall")
+print(recall)
+print()
+print("F1-Score")
+print(f1)
+print()
+
+
