@@ -163,6 +163,19 @@ for c in cols:
 x_test_terms = x_test_terms.to_numpy()
 x_test_terms = x_test_terms.tolist()
 
+x_train_terms = pd.read_csv("data/train_raw.csv")
+x_train_terms = x_train_terms.drop("income", 1)
+
+cols = list(x_train_terms.columns)
+cols = [cols[i] for i in feature_order]
+x_train_terms = x_train_terms[cols]
+
+for c in cols:
+	x_train_terms[c] = x_train_terms[c].apply(lambda x: c + "_" + x)
+
+x_train_terms = x_train_terms.to_numpy()
+x_train_terms = x_train_terms.tolist()
+
 for i in range(len(x_test_terms)):
 	j = 0 
 	while(neuron_layer[0][j].terms != x_test_terms[i][:len(neuron_layer[0][j].terms)]):
@@ -197,3 +210,44 @@ with open('tree_final.txt', 'w') as f:
 		f.write(str(tree_str) + '\n')
 	print("Done")
 
+
+print("Counting RuleList ...")
+counts = [0]*len(forest_final)
+
+for i in range(len(x_train_terms)):
+	j = 0 
+	while(forest_final[j] != x_train_terms[i][:len(forest_final[j])]):
+		j = j + 1
+		if(j == len(forest_final)):
+			break
+	if(j < len(counts)):
+		counts[j] = counts[j] + 1
+	
+counts = np.array(counts)
+sum_counts = np.sum(counts)
+counts = counts / sum_counts
+order = np.argsort(-1 * counts)
+counts = [counts[order[i]] for i in range(len(order))]
+forest_final = [forest_final[order[i]] for i in range(len(order))]
+i = 0 
+cum = 0
+while(cum < 0.90):
+	cum = cum + counts[i]
+	i = i + 1
+
+forest_final = forest_final[:i]
+counts = counts[:i]
+print(len(forest_final))
+
+with open('tree_final_weeded.txt', 'w') as f:
+	print("Writing")
+	for tree in forest_final:
+		tree_str = " and ".join(tree)
+		f.write(str(tree_str) + '\n')
+	print("Done")
+
+with open('tree_final_counts.txt', 'w') as f:
+	print("Writing")
+	for ct in counts:
+		f.write(str(ct) + '\n')
+	print("Done")
