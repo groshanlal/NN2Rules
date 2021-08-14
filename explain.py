@@ -19,6 +19,11 @@ print([len(income_model.reshaped_feature_terms[feature_order[i]]) for i in range
 print()
 
 neuron_layer = []
+neuron_collection = []
+if(1 == len(income_model.layer_weights)):
+	isLastLayer = True
+else:
+	isLastLayer = False
 
 t = time.time()
 for i in range(len(income_model.layer_bias[0])):
@@ -37,14 +42,18 @@ for i in range(len(income_model.layer_bias[0])):
 	print("Negative Forest: " + str(len(neuron.forest_negative)))
 	print("Forest: " + str(len(neuron.forest)))
 
-	neuron_layer.append(neuron.forest)
+	if(isLastLayer):	
+		neuron_layer.append(neuron.forest_positive)
+	else:
+		neuron_layer.append(neuron.forest)
+	neuron_collection.append(neuron)
 	print("--------------------")
 
 with open('tree.txt', 'w') as f:
 	print("Writing")
-	for i in range(len(neuron_layer)):
+	for i in range(len(neuron_collection)):
 		f.write("Neuron " + str(i) + ":" + '\n')
-		for tree in neuron_layer[i]:
+		for tree in neuron_collection[i].forest:
 			tree_str = tree.to_string()
 			f.write(str(tree_str) + '\n')
 		f.write("----------------" + '\n')	
@@ -52,23 +61,21 @@ with open('tree.txt', 'w') as f:
 
 with open('tree_pos.txt', 'w') as f:
 	print("Writing")
-	for i in range(len(neuron_layer)):
+	for i in range(len(neuron_collection)):
 		f.write("Neuron " + str(i) + ":" + '\n')
-		for tree in neuron_layer[i]:
+		for tree in neuron_collection[i].forest_positive:
 			tree_str = tree.to_string()
-			if(sum(tree.weights) + tree.bias >= 0):
-				f.write(str(tree_str) + '\n')
+			f.write(str(tree_str) + '\n')
 		f.write("----------------" + '\n')	
 	print("Done")
 
 with open('tree_neg.txt', 'w') as f:
 	print("Writing")
-	for i in range(len(neuron_layer)):
+	for i in range(len(neuron_collection)):
 		f.write("Neuron " + str(i) + ":" + '\n')
-		for tree in neuron_layer[i]:
+		for tree in neuron_collection[i].forest_negative:
 			tree_str = tree.to_string()
-			if(sum(tree.weights) + tree.bias < 0):
-				f.write(str(tree_str) + '\n')
+			f.write(str(tree_str) + '\n')
 		f.write("----------------" + '\n')	
 	print("Done")
 

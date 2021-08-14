@@ -69,7 +69,6 @@ def preprocess(df):
 
 	continuous_cols = ['age', 'capital-gain', 'capital-loss', 'hours-per-week']
 	for key in continuous_cols:	
-		print(key)
 		values = df[key]
 		values_min   = min(values)
 		values_max   = max(values)
@@ -82,12 +81,10 @@ def preprocess(df):
 			if(v == values_max):
 				values_max_count = values_max_count + 1
 		if(values_min_count > len(values)/3):
-			print(str(key) + " is skewed")
 			values_modified = values[values > values_min]
 			values_low   = np.percentile(values_modified, 33)
 			values_high  = np.percentile(values_modified, 67)
 		elif(values_max_count > len(values)/3):
-			print(str(key) + " is skewed")
 			values_modified = values[values < values_max]
 			values_low   = np.percentile(values_modified, 33)
 			values_high  = np.percentile(values_modified, 67)
@@ -96,7 +93,6 @@ def preprocess(df):
 			values_high  = 0.33*values_min + 0.67*values_max
 		values_min   = min(values)
 		values_max   = max(values)
-		print("buckets: ", values_min, ",", values_low, ",", values_high, ",", values_max)
 		df[key] = values.apply(lambda x: create_bins(x, values_low, values_high))
 	
 	
