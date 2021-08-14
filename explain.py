@@ -56,7 +56,7 @@ with open('tree_pos.txt', 'w') as f:
 		f.write("Neuron " + str(i) + ":" + '\n')
 		for tree in neuron_layer[i]:
 			tree_str = tree.to_string()
-			if(sum(tree.weights) + tree.bias > 0):
+			if(sum(tree.weights) + tree.bias >= 0):
 				f.write(str(tree_str) + '\n')
 		f.write("----------------" + '\n')	
 	print("Done")
@@ -67,7 +67,7 @@ with open('tree_neg.txt', 'w') as f:
 		f.write("Neuron " + str(i) + ":" + '\n')
 		for tree in neuron_layer[i]:
 			tree_str = tree.to_string()
-			if(sum(tree.weights) + tree.bias <= 0):
+			if(sum(tree.weights) + tree.bias < 0):
 				f.write(str(tree_str) + '\n')
 		f.write("----------------" + '\n')	
 	print("Done")
@@ -143,11 +143,11 @@ with open('tree_final.txt', 'w') as f:
 
 print("Verifying RuleList ...")
 
-y_pred = pd.read_csv("data/pred.csv", header=None).to_numpy()
+y_pred = pd.read_csv("data/test_pred.csv", header=None).to_numpy()
 y_pred = y_pred.reshape(-1)
 
 x_test = pd.read_csv("data/test.csv")
-x_test = x_test.drop("income_<=50K", 1)
+x_test = x_test.drop("income_>50K", 1)
 x_test = x_test.to_numpy()
 
 x_test_terms = pd.read_csv("data/test_raw.csv")

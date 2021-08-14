@@ -33,8 +33,11 @@ model.fit(x_train, y_train, epochs=50)
 print("Eval:")
 model.evaluate(x_test, y_test)
 
+y_pred = model.predict(x_train) 
+np.savetxt('data/train_pred.csv', y_pred, fmt='%.3f')
+
 y_pred = model.predict(x_test) 
-np.savetxt('data/pred.csv', y_pred, fmt='%.3f')
+np.savetxt('data/test_pred.csv', y_pred, fmt='%.3f')
 
 model.save('income_model')
 
@@ -74,5 +77,4 @@ print()
 print("F1-Score")
 print(f1)
 print()
-
 
