@@ -46,25 +46,31 @@ y_pred[y_pred < 0.5] = 0.0
 y_pred[y_pred >= 0.5] = 1.0 
 y_pred = y_pred.reshape(-1)
 
-tp = 0 
-fp = 0
-tn = 0 
-fn = 0
-for i in range(len(y_pred)):
-  if((y_test[i] == 1) and (y_pred[i] == 1)):
-    tp = tp + 1
-  if((y_test[i] == 1) and (y_pred[i] == 0)):
-    fn = fn + 1
-  if((y_test[i] == 0) and (y_pred[i] == 1)):
-    fp = fp + 1
-  if((y_test[i] == 0) and (y_pred[i] == 0)):
-    tn = tn + 1
+def report(y_pred, y_test):
+  tp = 0 
+  fp = 0
+  tn = 0 
+  fn = 0
+  for i in range(len(y_pred)):
+    if((y_test[i] == 1) and (y_pred[i] == 1)):
+      tp = tp + 1
+    if((y_test[i] == 1) and (y_pred[i] == 0)):
+      fn = fn + 1
+    if((y_test[i] == 0) and (y_pred[i] == 1)):
+      fp = fp + 1
+    if((y_test[i] == 0) and (y_pred[i] == 0)):
+      tn = tn + 1
 
-acc = (tp + tn) / (tp + fp + tn + fn)
-precision = tp / (tp + fp)
-recall = tp / (tp + fn)
-f1 = 2*precision*recall/(precision + recall)
+  acc = (tp + tn) / (tp + fp + tn + fn)
+  precision = tp / (tp + fp)
+  recall = tp / (tp + fn)
+  f1 = 2*precision*recall/(precision + recall)
+  return acc, precision, recall, f1
 
+acc, precision, recall, f1 = report(y_pred, y_test)
+
+print("----------------")
+print("Neural Network")
 print("Accuracy")
 print(acc)
 print()
@@ -77,4 +83,54 @@ print()
 print("F1-Score")
 print(f1)
 print()
+print("----------------")
+
+from sklearn.tree import DecisionTreeClassifier
+
+model = DecisionTreeClassifier()
+model.fit(x_train,y_train)
+
+y_pred = model.predict(x_test)
+
+acc, precision, recall, f1 = report(y_pred, y_test)
+
+print("Decision Tree")
+print("Accuracy")
+print(acc)
+print()
+print("Precision")
+print(precision)
+print()
+print("Recall")
+print(recall)
+print()
+print("F1-Score")
+print(f1)
+print()
+print("----------------")
+
+
+from sklearn.linear_model import LogisticRegression
+
+model = LogisticRegression()
+model.fit(x_train,y_train)
+
+y_pred = model.predict(x_test)
+
+acc, precision, recall, f1 = report(y_pred, y_test)
+
+print("Logistic Regression")
+print("Accuracy")
+print(acc)
+print()
+print("Precision")
+print(precision)
+print()
+print("Recall")
+print(recall)
+print()
+print("F1-Score")
+print(f1)
+print()
+print("----------------")
 
