@@ -1,1 +1,6 @@
+background/
+data/
+trained_model/
 *.txt
+.DS_Store
+*.png

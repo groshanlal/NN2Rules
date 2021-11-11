@@ -11,7 +11,7 @@ class ModelWeights:
 		return
 
 	def __load_weights(self):
-		model = tf.keras.models.load_model('income_model')
+		model = tf.keras.models.load_model('trained_model')
 		self.layer_weights = []
 		self.layer_bias = []
 
