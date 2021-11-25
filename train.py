@@ -7,8 +7,8 @@ from sklearn import metrics
 from sklearn import tree
 from sklearn.tree import DecisionTreeClassifier
 
-seed = int(sys.argv[1])
-tf.random.set_seed(seed)
+np.random.seed(123)
+tf.random.set_seed(123)
 
 data_train = pd.read_csv("data/train.csv") 
 data_test = pd.read_csv("data/test.csv")

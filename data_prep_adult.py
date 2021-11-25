@@ -1,4 +1,7 @@
 from data_prep import *
+import numpy as np
+
+np.random.seed(123)
 
 url = "https://archive.ics.uci.edu/ml/machine-learning-databases/adult/"
 download_to = 'data/'

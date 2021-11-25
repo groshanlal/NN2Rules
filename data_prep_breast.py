@@ -1,5 +1,8 @@
 from data_prep import *
 from sklearn.utils import shuffle
+import numpy as np
+
+np.random.seed(123)
 
 url = "https://archive.ics.uci.edu/ml/machine-learning-databases/breast-cancer/"
 download_to = 'data/'
