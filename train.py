@@ -109,9 +109,12 @@ acc, precision, recall, f1, auc = check_performance(y_pred, y_train)
 print("Testing")
 y_pred = predict(x_test) 
 acc, precision, recall, f1, auc = check_performance(y_pred, y_test)
+
+error_mask = np.array(y_pred - y_test)
+error_mask = np.square(error_mask)
+"""
 print("----------------")
 
-"""
 from skater.core.explanations import Interpretation
 from skater.model import InMemoryModel
 
@@ -162,9 +165,12 @@ acc, precision, recall, f1, auc = check_performance(y_pred, y_test)
 y_pred_nn = predict(x_test) 
 y_pred_tree = model_tree.predict(x_test) 
 fidelity = check_fidelity(y_pred_tree, y_pred_nn)
+print("On correct samples")
+fidelity = check_fidelity(y_pred_tree[error_mask < 0.5], y_pred_nn[error_mask < 0.5])
+print("On error samples")
+fidelity = check_fidelity(y_pred_tree[error_mask > 0.5], y_pred_nn[error_mask > 0.5])
 print("----------------")
 
-print("----------------")
 model_tree_surrogate = DecisionTreeClassifier(max_depth=6) 
 model_tree_surrogate.fit(x_train, predict(x_train))
 
@@ -181,5 +187,9 @@ acc, precision, recall, f1, auc = check_performance(y_pred, y_test)
 y_pred_nn = predict(x_test) 
 y_pred_tree_surrogate = model_tree_surrogate.predict(x_test) 
 fidelity = check_fidelity(y_pred_tree_surrogate, y_pred_nn)
+print("On correct samples")
+fidelity = check_fidelity(y_pred_tree_surrogate[error_mask < 0.5], y_pred_nn[error_mask < 0.5])
+print("On error samples")
+fidelity = check_fidelity(y_pred_tree_surrogate[error_mask > 0.5], y_pred_nn[error_mask > 0.5])
 print("----------------")
 
