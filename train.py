@@ -94,7 +94,7 @@ def check_fidelity(y_pred_surrogate, y_pred_model):
   for i in range(len(y_pred_surrogate)):
     if(y_pred_surrogate[i] == y_pred_model[i]):
       fidelity = fidelity + 1
-  fidelity = fidelity / len(y_pred_model)
+  fidelity = fidelity / (len(y_pred_model) + 0.001)
   print("Fidelity")
   print(fidelity)
   print()
