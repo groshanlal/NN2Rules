@@ -70,6 +70,9 @@ plt.ylabel("Accuracy")
 plt.title("Accuracy as a function of Num Rules")
 plt.savefig("Accuracy.png")
 
+# num_rules, support, fidelity, accuracy
+results = np.vstack((np.array(list(range(1, 1 + num_rules)))/num_rules, rule_support, rule_fidelity, 1 - rule_error)).T
+np.savetxt("sup_fid_err.csv", results, "%f, %d, %f, %f")
 
 print("Fidelity on correct samples")
 rule_fidelity = [0]*len(rule_counts[:-1, 0])
@@ -94,4 +97,8 @@ tot_num_data = rule_fidelity[-1]
 rule_fidelity = rule_fidelity / tot_num_data
 
 print(rule_fidelity[num_effective_rules - 1])
+
+
+
+
 

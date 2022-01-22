@@ -36,13 +36,13 @@ def custom_preprocessing(df):
 	df = df.drop('fnlwgt',1)
 	df = df.drop('education-num',1)
 
-	df = df.drop('education',1)
-	# df = df.drop('workclass',1)   # dont drop
-	df = df.drop('occupation',1)
+	# df = df.drop('education',1)
+	df = df.drop('workclass',1)   # dont drop
+	# df = df.drop('occupation',1)
 	df = df.drop('relationship',1)
-	# df = df.drop('race',1)        # dont drop
-	df = df.drop('marital-status',1)
-	df = df.drop('hours-per-week',1)
+	df = df.drop('race',1)        # dont drop
+	# df = df.drop('marital-status',1)
+	# df = df.drop('hours-per-week',1)
 	
 	return df
 
