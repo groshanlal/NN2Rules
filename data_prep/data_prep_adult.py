@@ -33,16 +33,10 @@ def custom_preprocessing(df):
 	df = reduce_categories(df, 'native-country', 
 		country_list, [c if c == 'United-States' else 'Other' for c in country_list])
 	
-	df = df.drop('fnlwgt',1)
-	df = df.drop('education-num',1)
+	df = df.drop(columns=['fnlwgt', 'education-num'])
 
-	# df = df.drop('education',1)
-	df = df.drop('workclass',1)   # dont drop
-	# df = df.drop('occupation',1)
-	df = df.drop('relationship',1)
-	df = df.drop('race',1)        # dont drop
-	# df = df.drop('marital-status',1)
-	# df = df.drop('hours-per-week',1)
+	# df = df.drop(columns=['education', 'occupation', 'marital-status', 'hours-per-week'])
+	df = df.drop(columns=['workclass', 'relationship', 'race'])   # dont drop
 	
 	return df
 

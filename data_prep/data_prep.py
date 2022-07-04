@@ -75,7 +75,7 @@ def rename_label(df, label_col, labels, binary_labels):
 
 def tensor_transform(df):
 	df = pd.get_dummies(data=df, columns=df.columns)
-	df = df.drop('label_0', 1)
+	df = df.drop(columns = ['label_0'])
 	return df
 
 
