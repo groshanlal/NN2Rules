@@ -1,8 +1,3 @@
-import tensorflow as tf
-import pandas as pd
-import numpy as np
-import time
-
 class Rule:
 	def __init__(self, terms, list_of_weights, list_of_bias):
 		self.terms = terms[:] 

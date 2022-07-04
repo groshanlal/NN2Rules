@@ -1,7 +1,4 @@
-import tensorflow as tf
-import pandas as pd
 import numpy as np
-import time
 
 class RuleListBuilder:
 	def __init__(self, weights, bias, reshaped_weights, reshaped_bias, reshaped_feature_terms):

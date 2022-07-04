@@ -1,6 +1,3 @@
-import tensorflow as tf
-import pandas as pd
-import numpy as np
 from nn2rules.explainer import ModelExplainer
 
 model_explainer = ModelExplainer(model_path='trained_model', data_path='data/train.csv')

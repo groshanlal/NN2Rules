@@ -1,11 +1,8 @@
-import tensorflow as tf
-import pandas as pd
 import numpy as np
-import time
 from nn2rules.builder import RuleListBuilder, RuleBuilder
 
-class InputNeuron:
-	def __init__(self, weights, bias, reshaped_feature_terms, feature_order = None):
+class Linear:
+	def __init__(self, weights, bias, reshaped_feature_terms, feature_order):
 		self.weights = weights[:]
 		self.bias = bias
 
@@ -15,8 +12,7 @@ class InputNeuron:
 		self.__reshape_term_weights()
 		self.__shift_term_weights()
 		self.__sort_term_weights()
-		if(feature_order is not None):
-			self.__order_features(feature_order)
+		self.__order_features(feature_order)
 
 	def __reshape_term_weights(self):
 		self.reshaped_weights = []
@@ -57,7 +53,7 @@ class Neuron:
 		self.bias = bias
 		self.reshaped_feature_terms = [ft[:] for ft in reshaped_feature_terms]
 
-		positive_neuron = InputNeuron(self.weights, self.bias, self.reshaped_feature_terms, feature_order)
+		positive_neuron = Linear(self.weights, self.bias, self.reshaped_feature_terms, feature_order)
 		positive_rule_list_builder = RuleListBuilder(positive_neuron.weights, positive_neuron.bias,
 			positive_neuron.reshaped_weights, positive_neuron.reshaped_bias, positive_neuron.reshaped_feature_terms)
 
@@ -70,7 +66,7 @@ class Neuron:
 		rule_list_positive = positive_rule_list_builder.get_rule_list(prior = prior)
 		self.rule_list_positive = rule_list_positive
 
-		negative_neuron = InputNeuron((-1*np.array(self.weights)).tolist(), -1*self.bias, self.reshaped_feature_terms, feature_order)
+		negative_neuron = Linear((-1*np.array(self.weights)).tolist(), -1*self.bias, self.reshaped_feature_terms, feature_order)
 		negative_rule_list_builder = RuleListBuilder(negative_neuron.weights, negative_neuron.bias,
 			negative_neuron.reshaped_weights, negative_neuron.reshaped_bias, negative_neuron.reshaped_feature_terms)
 
