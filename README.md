@@ -1,8 +1,8 @@
-# NN2Tree
+# NN2Rules
 
 Run:
-```sh
-python3 data_prep.py
+```
+python3 data_prep/data_prep_contraception.py
 python3 train.py 3
 python3 explain.py
 ```
