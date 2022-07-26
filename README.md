@@ -21,3 +21,14 @@ Step 3: Explain the neural network using NN2Rules:
 ```
 python3 explain.py
 ```
+
+## Citation
+Please cite [NN2Rules](https://arxiv.org/abs/2207.12271) in your publications if it helps your research:
+```
+@article{nn2rules2022,
+  title={NN2Rules: Extracting Rule List from Neural Networks},
+  author={Lal, G Roshan and Mithal, Varun},
+  journal={arXiv preprint arXiv:2207.12271},
+  year={2022}
+}
+```
